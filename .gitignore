@@ -3,3 +3,5 @@ build/
 data/protoc/
 dist/
 .ipynb_checkpoints/
+__pycache__
+vehicle_detection/data/*
