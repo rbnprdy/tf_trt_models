@@ -38,6 +38,11 @@ MODELS = {
         'http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz',
         'ssd_mobilenet_v2_coco_2018_03_29',
     ),
+    'ssdlite_mobilenet_v2_coco': DetectionModel(
+        'ssdlite_mobilenet_v2_coco',
+        'http://download.tensorflow.org/models/object_detection/ssdlite_mobilenet_v2_coco_2018_05_09.tar.gz', 
+        'ssdlite_mobilenet_v2_coco_2018_05_09',
+    ),
     'ssd_inception_v2_coco': DetectionModel(
         'ssd_inception_v2_coco',
         'http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2018_01_28.tar.gz',
