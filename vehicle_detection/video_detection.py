@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import tensorflow as tf
 import numpy as np
@@ -10,58 +11,44 @@ from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
 
 
-def open_cam_onboard(width, height):
-    # On versions of L4T prior to 28.1, add 'flip-method=2' into gst_str
-    gst_str = ('nvcamerasrc ! '
-               'video/x-raw(memory:NVMM), '
-               'width=(int)1920, height=(int)1080, '
-               'flip-method=0, '
-               'format=(string)I420, framerate=(fraction)120/1 ! '
-               'nvvidconv flip-method=2 ! '
-               'video/x-raw, width=(int){}, height=(int){}, '
-               'format=(string)BGRx ! '
-               'videoconvert ! appsink').format(width, height)
-    return cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
-
-
 def load_image_into_numpy_array(image):
     (im_width, im_height) = image.size
     return np.array(image.getdata()).reshape(
         (im_height, im_width, 3)).astype(np.uint8)
 
 
-WIDTH = 1920
-HEIGHT = 1080
+# WIDTH = 1920
+# HEIGHT = 1080
+# WIDTH = 640
+# HEIGHT = 480
+WIDTH = int(sys.argv[3])
+HEIGHT = int(sys.argv[4])
 
 # Define the video stream
-cap = open_cam_onboard(WIDTH, HEIGHT)
+cap = cv2.VideoCapture(sys.argv[1])
 
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter('/mnt/SD/output.avi', fourcc, 7.0, (WIDTH, HEIGHT))
-
+out = cv2.VideoWriter(sys.argv[2], fourcc, 12.0, (WIDTH, HEIGHT))
 
 # What model to download.
 MODEL = 'ssdlite_mobilenet_v2_coco'
-MODEL_DIR = './frozen_model'
 DATA_DIR = './data/'
 CONFIG_FILE = MODEL + '.config'
 CHECKPOINT_FILE = 'model.ckpt'
-#PATH_TO_LABELS = '../third_party/models/research/object_detection/data/' +\
-#    'mscoco_label_map.pbtxt'
-PATH_TO_LABELS = 'object_detection.pbtxt'
-OPTIMIZED_MODEL_FILE = 'optimized_model_2.pbtxt'
 
-PIPELINE_CONFIG_NAME='pipeline.config'
-CHECKPOINT_PREFIX='model.ckpt'
-# Number of classes to detect
-#NUM_CLASSES = 90
-NUM_CLASSES = 1
+if int(sys.argv[5]) == 0:
+    PATH_TO_LABELS = '../third_party/models/research/object_detection/data/' +\
+        'mscoco_label_map.pbtxt'
+    OPTIMIZED_MODEL_FILE = 'optimized_model.pbtxt'
+    NUM_CLASSES = 90
+else:
+    PATH_TO_LABELS = 'object_detection.pbtxt'
+    OPTIMIZED_MODEL_FILE = 'optimized_model_2.pbtxt'
+    NUM_CLASSES = 1
 if not os.path.exists(os.path.join(DATA_DIR, OPTIMIZED_MODEL_FILE)):
     print('Creating optimized graph...')
     # Download model and build frozen graph
-    # config_path, checkpoint_path = download_detection_model(MODEL, 'data')
-    config_path = os.path.join(MODEL_DIR, PIPELINE_CONFIG_NAME)
-    checkpoint_path = os.path.join(MODEL_DIR, CHECKPOINT_PREFIX)
+    config_path, checkpoint_path = download_detection_model(MODEL, 'data')
     frozen_graph, input_names, output_names = build_detection_graph(
         config=config_path,
         checkpoint=checkpoint_path,
@@ -114,6 +101,7 @@ while True:
     ret, image_np = cap.read()
     if not ret:
         break
+    image_np = cv2.resize(image_np, (WIDTH, HEIGHT))
     image_np_expanded = np.expand_dims(image_np, axis=0)
     (boxes, scores, classes, num_detections) = tf_sess.run(
         [tf_boxes, tf_scores, tf_classes, tf_num_detections],
@@ -126,16 +114,14 @@ while True:
         category_index,
         use_normalized_coordinates=True,
         line_thickness=8)
-
     # Calculate FPS
     elapsed_time = time.time() - start_time
-    if (elapsed_time != 0):
-        cv2.putText(image_np, '%.3g fps' % (1 / elapsed_time),
-                    (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (255, 255, 255),
-                    2)
+    cv2.putText(image_np, '%.3g fps' % (1 / elapsed_time),
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2)
     # Display output
     out.write(image_np)
 
@@ -144,5 +130,5 @@ while True:
 
 cap.release()
 out.release()
-if (total_time != 0):
-    print('average fps: {}'.format(num_iterations / total_time))
+
+print('average fps: {}'.format(num_iterations / total_time))
